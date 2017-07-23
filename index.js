@@ -252,6 +252,6 @@ function generateStateMachine (name, options) {
   return klass
 }
 
-export default function StateMachine (name, options) {
+module.exports = function StateMachine (name, options) {
   return generateStateMachine(name, options)
 }
