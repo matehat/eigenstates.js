@@ -1,0 +1,24 @@
+{
+  "name": "eigenstates.js",
+  "version": "1.0.0",
+  "description": "Define finite states, solidify your code",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/matehat/eigenstates.js.git"
+  },
+  "keywords": [
+    "fsm",
+    "finite-states",
+    "finite-state-machine"
+  ],
+  "author": "mathieu@damours.org",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/matehat/eigenstates.js/issues"
+  },
+  "homepage": "https://github.com/matehat/eigenstates.js#readme"
+}
