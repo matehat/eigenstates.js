@@ -197,7 +197,7 @@ function generateStateMachine (name, options) {
       }
     }
 
-    for (let queued of this[$$queue]) {
+    for (let queued of this[$$queue].slice(0)) {
       let {methodName, args, resolve, reject} = queued
       if (typeof this.$state[methodName] === 'function') {
         try {
