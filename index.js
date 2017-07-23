@@ -252,12 +252,6 @@ function generateStateMachine (name, options) {
   return klass
 }
 
-const StateMachine = function (name, options) {
+export default function StateMachine (name, options) {
   return generateStateMachine(name, options)
 }
-
-export default StateMachine
-
-angular
-.module('iso.libs.stateMachine', [])
-.constant('StateMachine', StateMachine)
