@@ -1,5 +1,5 @@
 {
-  "name": "eigenstates.js",
+  "name": "eigenstates",
   "version": "1.0.0",
   "description": "Define finite states, solidify your code",
   "main": "index.js",
