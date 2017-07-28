@@ -124,7 +124,7 @@ function generateStateMachine (name, options) {
   }
 
   klass.prototype.$queueCall = function (methodName, args) {
-    if (typeof this.$state[methodName] === 'function') {
+    if (this.$state != null && typeof this.$state[methodName] === 'function') {
       return new Promise((resolve) =>
         resolve(this.$state[methodName].apply(this, args))
       )
@@ -224,7 +224,7 @@ function generateStateMachine (name, options) {
   }
 
   klass.prototype.$waitFor = function (name) {
-    if (name === this.$state.name) {
+    if (this.$state != null && name === this.$state.name) {
       return Promise.resolve(this.$state.name)
     }
     let waiter = {name, transient: true}
