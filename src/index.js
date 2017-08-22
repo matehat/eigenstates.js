@@ -108,18 +108,22 @@ function generateStateMachine (name, options) {
   }
 
   klass.prototype[$$addWaiter] = function (waiter) {
-    let {name} = waiter
-    if (this[$$waiters][name] == null) {
-      this[$$waiters][name] = []
+    let {names} = waiter
+    for (let name of names) {
+      if (this[$$waiters][name] == null) {
+        this[$$waiters][name] = []
+      }
+      this[$$waiters][name].push(waiter)
     }
-    this[$$waiters][name].push(waiter)
   }
 
   klass.prototype[$$removeWaiter] = function (waiter) {
-    let {name} = waiter
-    if (this[$$waiters][name] != null) {
-      let waiters = this[$$waiters][name]
-      waiters.splice(waiters.indexOf(waiter), 1)
+    let {names} = waiter
+    for (let name of names) {
+      if (this[$$waiters][name] != null) {
+        let waiters = this[$$waiters][name]
+        waiters.splice(waiters.indexOf(waiter), 1)
+      }
     }
   }
 
@@ -223,11 +227,14 @@ function generateStateMachine (name, options) {
     })
   }
 
-  klass.prototype.$waitFor = function (name) {
-    if (this.$state != null && name === this.$state.name) {
+  klass.prototype.$waitFor = function (names) {
+    if (typeof names === 'string') {
+      names = [names]
+    }
+    if (this.$state != null && names.some(name => name === this.$state.name)) {
       return Promise.resolve(this.$state.name)
     }
-    let waiter = {name, transient: true}
+    let waiter = {names, transient: true}
     let promise = new Promise((resolve, reject) => {
       waiter.resolve = resolve
       waiter.reject = reject
@@ -236,14 +243,17 @@ function generateStateMachine (name, options) {
     return promise
   }
 
-  klass.prototype.$on = function (name, cb) {
+  klass.prototype.$on = function (names, cb) {
+    if (typeof names === 'string') {
+      names = [names]
+    }
     let waiter = {
-      name,
+      names,
       transient: false,
       resolve: cb.bind(this, void 0)
     }
     this[$$addWaiter](waiter)
-    if (name === this.$state.name) {
+    if (names.some(name => name === this.$state.name)) {
       waiter.resolve(this)
     }
     return () => { this[$$removeWaiter](waiter) }
