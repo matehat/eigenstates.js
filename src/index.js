@@ -39,6 +39,25 @@ function generateStateMachine (name, options) {
     }
     if (this.constructor[$$persisted] === true) {
       let savedState = this[$$loadState]()
+      window.addEventListener('storage', (event) => {
+        if (event.key === this.$storageKey && !!event.newValue) {
+          if (!event.newValue) {
+            this.$moveTo(options.default)
+          } else {
+            let {name} = JSON.parse(event.newValue)
+            let newState = this.constructor[$$states][name]
+            if (newState != null && newState.$sync) {
+              if (typeof newState.$sync === 'function') {
+                newState.$sync.call(this)
+              } else {
+                this.$moveTo(name, {persist: false})
+              }
+            }
+          }
+        } else if (!event.key) {
+          this.$moveTo(options.default)
+        }
+      })
       if (savedState != null) {
         this.$wakeTo(savedState)
         return
@@ -153,11 +172,11 @@ function generateStateMachine (name, options) {
       newState.$wake.call(this, date)
     }
     if (this.$state == null) {
-      this.$moveTo(name)
+      this.$moveTo(name, {persist: false})
     }
   }
 
-  klass.prototype.$moveTo = function (name) {
+  klass.prototype.$moveTo = function (name, options = {}) {
     let oldState = {}
     if (this.$state != null) {
       if (this.$state.name === name) {
@@ -176,7 +195,7 @@ function generateStateMachine (name, options) {
     }
 
     this[$$state] = newState
-    if (this.$state.$persist === true) {
+    if (options.persist !== false && this.$state.$persist === true) {
       this[$$saveState]()
     }
     if (typeof newState.$enter === 'function') {
