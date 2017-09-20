@@ -209,7 +209,7 @@ function generateStateMachine (name, options) {
     let waiters = this[$$waiters][newState.name] || []
     for (let waiter of waiters.slice(0)) {
       setTimeout(() => {
-        waiter.resolve(this, oldState.name)
+        waiter.resolve(newState.name)
       })
       if (waiter.transient) {
         this[$$removeWaiter](waiter)
@@ -235,7 +235,7 @@ function generateStateMachine (name, options) {
         }
       }
     }
-    return Promise.resolve(oldState.name)
+    return Promise.resolve(newState.name)
   }
 
   klass.prototype.$moveToAsync = function (name) {
@@ -273,7 +273,7 @@ function generateStateMachine (name, options) {
     }
     this[$$addWaiter](waiter)
     if (names.some(name => name === this.$state.name)) {
-      waiter.resolve(this)
+      waiter.resolve(this.$state.name)
     }
     return () => { this[$$removeWaiter](waiter) }
   }
