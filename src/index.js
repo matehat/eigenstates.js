@@ -1,3 +1,18 @@
+const $$states = Symbol('states')
+const $$state = Symbol('state')
+const $$queue = Symbol('queue')
+const $$waiters = Symbol('waiters')
+const $$addWaiter = Symbol('addWaiter')
+const $$removeWaiter = Symbol('removeWaiter')
+const $$constructor = Symbol('constructor')
+
+const $$saveState = Symbol('saveState')
+const $$loadState = Symbol('loadState')
+const $$persisted = Symbol('persisted')
+const $$steps = Symbol('steps')
+const $$debugging = Symbol('debugging')
+const $$maxDebugSteps = Symbol('maxDebugSteps')
+
 function factory (name, constructor) {
   let klass
 
@@ -14,20 +29,12 @@ function factory (name, constructor) {
   return klass
 }
 
-const $$states = Symbol('states')
-const $$state = Symbol('state')
-const $$queue = Symbol('queue')
-const $$waiters = Symbol('waiters')
-const $$addWaiter = Symbol('addWaiter')
-const $$removeWaiter = Symbol('removeWaiter')
-const $$constructor = Symbol('constructor')
+let promiseFactory = function (...args) {
+  return new Promise(...args)
+}
 
-const $$saveState = Symbol('saveState')
-const $$loadState = Symbol('loadState')
-const $$persisted = Symbol('persisted')
-const $$steps = Symbol('steps')
-const $$debugging = Symbol('debugging')
-const $$maxDebugSteps = Symbol('maxDebugSteps')
+promiseFactory.resolve = Promise.resolve.bind(Promise)
+promiseFactory.all = Promise.all.bind(Promise)
 
 let $debugging = false
 let $maxDebugSteps
@@ -173,14 +180,14 @@ function generateStateMachine (name, options) {
 
   klass.prototype.$queueCall = function (methodName, args) {
     if (this.$state != null && typeof this.$state[methodName] === 'function') {
-      return new Promise((resolve) =>
+      return StateMachine.createPromise((resolve) =>
         resolve(this.$state[methodName].apply(this, args))
       )
     }
 
     let resolver
     let rejector
-    let promise = new Promise((resolve, reject) => {
+    let promise = StateMachine.createPromise((resolve, reject) => {
       resolver = resolve
       rejector = reject
     })
@@ -219,7 +226,7 @@ function generateStateMachine (name, options) {
     let oldState = {}
     if (this.$state != null) {
       if (this.$state.name === name) {
-        return Promise.resolve(this.$state.name)
+        return StateMachine.resolvePromise(this.$state.name)
       }
       oldState = this.$state
       this[$$state] = null
@@ -279,11 +286,11 @@ function generateStateMachine (name, options) {
       }
     }
     this.$$addDebugStep({name, action: '$settle'})
-    return Promise.resolve(newState.name)
+    return StateMachine.resolvePromise(newState.name)
   }
 
   klass.prototype.$moveToAsync = function (name) {
-    return new Promise((resolve) => {
+    return StateMachine.createPromise((resolve) => {
       setTimeout(() => {
         resolve(this.$moveTo(name))
       })
@@ -295,10 +302,10 @@ function generateStateMachine (name, options) {
       names = [names]
     }
     if (this.$state != null && names.some(name => name === this.$state.name)) {
-      return Promise.resolve(this.$state.name)
+      return StateMachine.resolvePromise(this.$state.name)
     }
     let waiter = {names, transient: true}
-    let promise = new Promise((resolve, reject) => {
+    let promise = StateMachine.createPromise((resolve, reject) => {
       waiter.resolve = resolve
       waiter.reject = reject
     })
@@ -333,5 +340,23 @@ StateMachine.setDebugging = function (isDebugging, maxDebugSteps = 50) {
   $debugging = isDebugging
   $maxDebugSteps = maxDebugSteps
 }
+
+Object.assign(StateMachine, {
+  setPromiseFactory: function (factory) {
+    promiseFactory = factory
+  },
+  resolvePromise: function (arg) {
+    return promiseFactory.resolve(arg)
+  },
+  rejectPromise: function (arg) {
+    return promiseFactory.reject(arg)
+  },
+  allPromise: function (arg) {
+    return promiseFactory.all(arg)
+  },
+  createPromise: function (...args) {
+    return promiseFactory(...args)
+  }
+})
 
 module.exports = StateMachine
