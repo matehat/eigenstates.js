@@ -25,6 +25,12 @@ const $$constructor = Symbol('constructor')
 const $$saveState = Symbol('saveState')
 const $$loadState = Symbol('loadState')
 const $$persisted = Symbol('persisted')
+const $$steps = Symbol('steps')
+const $$debugging = Symbol('debugging')
+const $$maxDebugSteps = Symbol('maxDebugSteps')
+
+let $debugging = false
+let $maxDebugSteps
 
 function generateStateMachine (name, options) {
   options = Object.assign({storageName: name, debounce: 5}, options)
@@ -100,16 +106,35 @@ function generateStateMachine (name, options) {
     }
   }
 
+  klass.setDebugging = function (isDebugging, maxDebugSteps) {
+    klass[$$debugging] = isDebugging
+    klass[$$maxDebugSteps] = maxDebugSteps
+  }
+
   Object.defineProperties(klass.prototype, {
     $state: {
-      get: function () {
+      get () {
         return this[$$state]
       }
     },
     $storageKey: {
-      get: function () {
+      get () {
         return `${options.storageName}:${this.name}`
       }
+    },
+    [$$debugging]: {
+      get () {
+        return klass[$$debugging] == null ? $debugging : klass[$$debugging]
+      }
+    },
+    [$$maxDebugSteps]: {
+      get () {
+        return klass[$$maxDebugSteps] == null ? $maxDebugSteps : klass[$$debugging]
+      }
+    },
+    $$debugSteps: {
+      configurable: false,
+      get () { return this[$$steps] }
     }
   })
 
@@ -176,6 +201,20 @@ function generateStateMachine (name, options) {
     }
   }
 
+  klass.prototype.$$addDebugStep = function (data) {
+    if (this[$$debugging] === true) {
+      if (this[$$steps] == null) this[$$steps] = []
+
+      if (typeof data === 'function') {
+        data = data.call(this)
+      }
+      if (this[$$steps].length === this[$$maxDebugSteps]) {
+        this[$$steps].shift()
+      }
+      this[$$steps].push(data)
+    }
+  }
+
   klass.prototype.$moveTo = function (name, options = {}) {
     let oldState = {}
     if (this.$state != null) {
@@ -186,20 +225,24 @@ function generateStateMachine (name, options) {
       this[$$state] = null
       if (typeof oldState.$exit === 'function') {
         oldState.$exit.call(this, name)
+        this.$$addDebugStep({name, action: '$exit'})
       }
     }
 
     let newState = this.constructor[$$states][name]
     if (newState == null) {
+      this.$$addDebugStep({name, action: '$unfound'})
       throw new Error(`StateMachine ${klass.name} does not have a state named ${name}`)
     }
 
     this[$$state] = newState
     if (options.persist !== false && this.$state.$persist === true) {
+      this.$$addDebugStep({name, action: '$save'})
       this[$$saveState]()
     }
     if (typeof newState.$enter === 'function') {
       newState.$enter.call(this, oldState.name)
+      this.$$addDebugStep({name, action: '$enter'})
     }
     if (newState !== this[$$state]) {
       // Exit early if the state changed while calling $enter
@@ -235,6 +278,7 @@ function generateStateMachine (name, options) {
         }
       }
     }
+    this.$$addDebugStep({name, action: '$settle'})
     return Promise.resolve(newState.name)
   }
 
@@ -281,6 +325,13 @@ function generateStateMachine (name, options) {
   return klass
 }
 
-module.exports = function StateMachine (name, options) {
+function StateMachine (name, options) {
   return generateStateMachine(name, options)
 }
+
+StateMachine.setDebugging = function (isDebugging, maxDebugSteps = 50) {
+  $debugging = isDebugging
+  $maxDebugSteps = maxDebugSteps
+}
+
+module.exports = StateMachine
