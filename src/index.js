@@ -367,7 +367,12 @@ class Transition {
       if (newState.canHandleMessage(machine, name)) {
         let control = new MessageHandlerControl(promise)
         let handler = newState[$$messages].get(name)
-        handler.apply(machine, [control, ...args])
+
+        if (handler == null) {
+          control.postpone()
+        } else {
+          handler.apply(machine, [control, ...args])
+        }
 
         if (!control.postponed) {
           queuedMessages.splice(queuedMessages.indexOf(queued), 1)
